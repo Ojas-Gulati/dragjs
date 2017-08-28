@@ -49,7 +49,7 @@ dragArea.add("rectangle", {
 new dragCanvas(canvas)         // Creates a new dragCanvas on the canvas specified.
 dragArea.add(id, [options])    // Adds a draggable object
 dragArea.disable([id])         // Disables clicking and dragging on the whole canvas or the name specified
-dragArea.enable([id])          // Enables clicking and dragging on the whole canvas or the name specified (surprise)
+dragArea.enable([id])          // Enables clicking and dragging on the whole canvas or the name specified
 dragArea.disableLayer([id])    // Disables clicking and dragging on a certain layer if using layeredCanvas
 dragArea.enableLayer([id])     // Enables clicking and dragging on a certain layer if using layeredCanvas
 dragArea.remove(id)            // Removes an object
@@ -60,7 +60,7 @@ dragArea.getObjectData([id])   // Returns the internal data of a certain object 
 
 ### Options:
 * `x`: (**required**) The starting X coordinate of your object. If accessed later, it will contain the new coordinates.
-* `y`: (**required**) The starting Y coordinate of your object. If accessed later, it will contain the new coordinates. (wow exciting very much)
+* `y`: (**required**) The starting Y coordinate of your object. If accessed later, it will contain the new coordinates.
 * `shape`: (**required**) When your shape is dragged, it will have new x and y coordinates. These will be passed into this function; draw the shape in the correct position. If you wish to modify any of the objects properties, return a JSON object containing only the values that you want to change e.g. x or y or shaped
 * `isClicked` or `boundingBox`: (**required**) These both let the package know if the object is being pressed
     * `isClicked`: (higher priority than `boundingBox`) a function (mouseX, mouseY, currentX, currentY) that returns true if the mouse is over the shape. The shape's current position is given by currentX and currentY
@@ -77,5 +77,5 @@ dragArea.getObjectData([id])   // Returns the internal data of a certain object 
 * `eventListeners`: A set of key-value pairs, each containing a modification JSON i.e. the changed key-value pairs from the original - see the example. The modification JSON can also contain an element `call`, which is a function to be called when the event is fired. The event listeners are:
     * `drag` - fired while the object is picked up, dragged or put down
     * `hover` - fired when the mouse is hovering over the object
-    * `pick` - fired when the element is picked up
+    * `pick` - fired when the element is picked up or clicked on
     * `drop` - fired when the element is dropped
