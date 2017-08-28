@@ -74,8 +74,9 @@ dragArea.getObjectData([id])   // Returns the internal data of a certain object 
         * `offsetY`: the offset of the bounding box in the y direction
 * `drawPriority`: Objects with higher draw priorities are drawn later i.e. "on top". If not present, defaults to `clickPriority`. If that is not present, defaults to 0.
 * `clickPriority`: When objects overlap, objects with higher click priority are considered to be "on top" for dragging.  If not present, defaults to `drawPriority`. If that is not present, defaults to 0.
-* `eventListeners`: A set of key-value pairs, each containing a modification JSON i.e. the changed key-value pairs from the original - see the example. The modification JSON can also contain an element `call`, which is a function to be called when the event is fired. The event listeners are:
+* `eventListeners`: A set of key-value pairs, each containing a modification JSON i.e. the changed key-value pairs from the original - see the example. The modification JSON can also contain an element `call`, which is a function to be called when the event is fired. The event listeners are (in precedence order):
     * `drag` - fired while the object is picked up, dragged or put down
+    * `click` - fired when an object is clicked on
     * `hover` - fired when the mouse is hovering over the object
-    * `pick` - fired when the element is picked up or clicked on
+    * `pick` - fired when the element is picked up
     * `drop` - fired when the element is dropped
