@@ -39,23 +39,23 @@ dragArea.add("rectangle", {
             "shape": function (x, y) {
                 ctx.rect(x - 2, y - 2, 14, 14)
             }
-        }
+        } //
     }
 })
 ```
 ## Functions + options
 ### Functions:
 ```javascript
-new dragCanvas(canvas)               // Creates a new dragCanvas on the canvas specified.
-dragArea.add(id, [options])          // Adds a draggable object
-dragArea.disable([id])               // Disables clicking and dragging on the whole canvas or the name specified
-dragArea.enable([id])                // Enables clicking and dragging on the whole canvas or the name specified (surprise)
-dragArea.disableLayer([id])          // Disables clicking and dragging on a certain layer if using layeredCanvas
-dragArea.enableLayer([id])           // Enables clicking and dragging on a certain layer if using layeredCanvas
-dragArea.remove(id)                  // Removes an object
-dragArea.redraw()                    // Redraws the canvas i.e. will draw all objects attached to the dragArea
-dragArea.objects                     // Returns a list of object names
-dragArea.getObjectData([id])         // Returns the internal data of a certain object or otherwise all objects
+new dragCanvas(canvas)         // Creates a new dragCanvas on the canvas specified.
+dragArea.add(id, [options])    // Adds a draggable object
+dragArea.disable([id])         // Disables clicking and dragging on the whole canvas or the name specified
+dragArea.enable([id])          // Enables clicking and dragging on the whole canvas or the name specified (surprise)
+dragArea.disableLayer([id])    // Disables clicking and dragging on a certain layer if using layeredCanvas
+dragArea.enableLayer([id])     // Enables clicking and dragging on a certain layer if using layeredCanvas
+dragArea.remove(id)            // Removes an object
+dragArea.redraw()              // Redraws the canvas i.e. will draw all objects attached to the dragArea
+dragArea.objects               // Returns a list of object names
+dragArea.getObjectData([id])   // Returns the internal data of a certain object or otherwise all objects
 ```
 
 ### Options:
@@ -74,3 +74,8 @@ dragArea.getObjectData([id])         // Returns the internal data of a certain o
         * `offsetY`: the offset of the bounding box in the y direction
 * `drawPriority`: Objects with higher draw priorities are drawn later i.e. "on top". If not present, defaults to `clickPriority`. If that is not present, defaults to 0.
 * `clickPriority`: When objects overlap, objects with higher click priority are considered to be "on top" for dragging.  If not present, defaults to `drawPriority`. If that is not present, defaults to 0.
+* `eventListeners`: A set of key-value pairs, each containing a modification JSON i.e. the changed key-value pairs from the original - see the example. The modification JSON can also contain an element `call`, which is a function to be called when the event is fired. The event listeners are:
+    * `drag` - fired while the object is picked up, dragged or put down
+    * `hover` - fired when the mouse is hovering over the object
+    * `pick` - fired when the element is picked up
+    * `drop` - fired when the element is dropped
