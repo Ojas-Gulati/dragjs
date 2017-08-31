@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>dragjs</h1><h2>What is this?</h2><p>In essence, this is <strong>a library that allows for easy yet customisable dragging of objects on a <code>&lt;canvas&gt;</code></strong></p>
+<h2>Boring stuff</h2><p>By Ojas Gulati (Github Ojas-Gulati) - released under the MIT license</p>
+<p>::snore::</p>
+<h2>Quickstart</h2><ol>
+<li>Put the script in the head tag<pre class="prettyprint source lang-html"><code>&lt;head>
+&lt;script src=&quot;drag.js&quot;>&lt;/script>
+&lt;/head></code></pre></li>
+<li>Create a canvas<pre class="prettyprint source lang-html"><code>&lt;body>
+&lt;canvas id=&quot;canvas&quot;>&lt;/canvas>
+&lt;/body></code></pre></li>
+<li>Make a new <code>dragCanvas</code> and add a draggable object<pre class="prettyprint source lang-javascript"><code>var canvas = document.getElementById(&quot;canvas&quot;);
+var ctx = canvas.getContext(&quot;2d&quot;);
+var dragArea = new dragCanvas(canvas)
+dragArea.add(&quot;rectangle&quot;, {
+&quot;startX&quot;: 0,
+&quot;startY&quot;: 10,
+&quot;shape&quot;: function (x, y) {
+   ctx.rect(x, y, 10, 10)
+},
+&quot;boundingBox&quot;: {
+   &quot;width&quot;: 10,
+   &quot;height&quot;: 10,
+   &quot;center&quot;: false
+},
+&quot;eventListeners&quot;: {
+   &quot;drag&quot;: {
+       &quot;shape&quot;: function (x, y) {
+           ctx.rect(x - 2, y - 2, 14, 14)
+       }
+   } // makes canvas bigger while dragging
+}
+})</code></pre><h2>Functions + options</h2><h3>Functions:</h3><pre class="prettyprint source lang-javascript"><code>new dragCanvas(canvas[, options])  // Creates a new dragCanvas on the canvas specified with the given options.
+// canvas can also be a layerjs layer
+dragArea.add(id)              // Adds a draggable object
+dragArea.remove(id)           // Removes an object
+dragArea.disable([id])        // Disables clicking and dragging on the whole canvas or the name specified
+dragArea.enable([id])         // Enables clicking and dragging on the whole canvas or the name specified
+dragArea.hide([id])           // Hides the object specified or the whole canvas
+dragArea.show([id])           // Shows the object specified or the whole canvas
+dragArea.drop()               // Drops the current object picked up (if any)
+dragArea.redraw()             // Redraws the canvas i.e. will draw all objects attached to the dragArea
+dragArea.objects()            // Returns a list of object names
+dragArea.getObjectData(id)    // Returns the internal data of a certain object
+dragArea.getPosition(id)      // Returns the x-y coordinates of the object specified
+dragArea.setPosition(id)      // Set the x-y coordinates of the object specified
+dragArea.update(id, options)  // Update the data of the object specified with a modificationJSON options</code></pre></li>
+</ol>
+<h3>Options:</h3><ul>
+<li><code>x</code>: (<strong>required</strong>) The starting X coordinate of your object. If accessed later, it will contain the new coordinates.</li>
+<li><code>y</code>: (<strong>required</strong>) The starting Y coordinate of your object. If accessed later, it will contain the new coordinates. (wow exciting very much)</li>
+<li><code>shape</code>: (<strong>required</strong>) When your shape is dragged, it will have new x and y coordinates. These will be passed into this function; draw the shape in the correct position. If you wish to modify any of the objects properties, return a JSON object containing only the values that you want to change e.g. x or y or shaped</li>
+<li><code>isClicked</code> or <code>boundingBox</code>: (<strong>required</strong>) These both let the package know if the object is being pressed<ul>
+<li><code>isClicked</code>: (higher priority than <code>boundingBox</code>) a function (mouseX, mouseY, currentX, currentY) that returns true if the mouse is over the shape. The shape's current position is given by currentX and currentY</li>
+<li><code>boundingBox</code>: This draws a rectangle around the area and assumes the element clicked on if the mouse location is inside the box. It is a JSON object with:<ul>
+<li><code>width</code>: (<strong>required</strong>) The width of the bounding box. Can be a number or a function that returns a number. Width is calculated from the object's X coordinate.</li>
+<li><code>height</code>: (<strong>required</strong>) well what do you think it is</li>
+<li><code>center</code>: boolean - should be true if the box should be centered around the x and y coordinates of the object. Higher precedence than <code>centerV</code> and <code>centerH</code> Defaults to true.</li>
+<li><code>centerV</code>: boolean - should be true if the box should be centered vertically. Defaults to true.</li>
+<li><code>centerH</code>: boolean - should be true if the box should be centered horizontally. Defaults to true.</li>
+<li><code>offsetX</code>: the offset of the bounding box in the x direction</li>
+<li><code>offsetY</code>: the offset of the bounding box in the y direction</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>drawPriority</code>: Objects with higher draw priorities are drawn later i.e. &quot;on top&quot;. If not present, defaults to <code>clickPriority</code>. If that is not present, defaults to 0.</li>
+<li><code>clickPriority</code>: When objects overlap, objects with higher click priority are considered to be &quot;on top&quot; for dragging.  If not present, defaults to <code>drawPriority</code>. If that is not present, defaults to 0.</li>
+<li><code>eventListeners</code>: A set of key-value pairs, each containing a modification JSON i.e. the changed key-value pairs from the original - see the example. The modification JSON can also contain an element <code>call</code>, which is a function to be called when the event is fired. The event listeners are:<ul>
+<li><code>drag</code> - fired while the object is picked up, dragged or put down</li>
+<li><code>hover</code> - fired when the mouse is hovering over the object</li>
+<li><code>pick</code> - fired when the element is picked up</li>
+<li><code>drop</code> - fired when the element is dropped</li>
+</ul>
+</li>
+</ul>
+<h4>Initializer options</h4><ul>
+<li><code>type</code>: one of dragConstants.canvasType.canvas or dragConstants.canvasType.layerCanvas. If layerCanvas, pass a layerjs layer in the canvas parameter</li>
+<li><code>backgroundColor</code>: the background color of the area</li>
+</ul>
+<h3>What is a modification JSON?</h3><p>A modification JSON contains the differences between the original and the proposed new. In dragConstants, there is a helper function <code>modify</code> (<code>dragConstants.modify</code>) which can be used as <code>modify(original, modficationJSON)</code>
+For example, let's modify</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key1&quot;: &quot;1&quot;,
+    &quot;key2&quot;: 2,
+    &quot;key3&quot;: 3
+}</code></pre><p>with the modification JSON</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key1&quot;: null,
+    &quot;key3&quot;: &quot;4&quot;,
+    &quot;key4&quot;: &quot;newKey&quot;
+}</code></pre><p>It returns</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key2&quot;: 2,
+    &quot;key3&quot;: &quot;4&quot;,
+    &quot;key4&quot;: &quot;newKey&quot;
+}</code></pre><p><code>key1</code> was null in the modification JSON, so it is removed. Key 3 had a new value, so it is updated. Key 4 is new, so it was added to the final JSON</p>
+<p>This also works &quot;recursively&quot;.
+Let's modify</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key&quot;: {
+        &quot;keyInner&quot;: {
+            &quot;finalKey&quot;: {
+                &quot;keyX&quot;: &quot;keyY&quot;
+            }
+        }
+    }
+}</code></pre><p>with the modification JSON</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key&quot;: {
+        &quot;keyInner&quot;: {
+            &quot;extraKey&quot;: &quot;extra&quot;
+        }
+    }
+}</code></pre><p>It returns</p>
+<pre class="prettyprint source lang-javascript"><code>{
+    &quot;key&quot;: {
+        &quot;keyInner&quot;: {
+            &quot;finalKey&quot;: {
+                &quot;keyX&quot;: &quot;keyY&quot;
+            },
+            &quot;extraKey&quot;: &quot;extra&quot;
+        }
+    }
+}</code></pre><p>despite the value of key being different in both JSONs. If both are objects, the same <code>modify</code> process in carried out on the JSON level under.</p></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="dragCanvas.html">dragCanvas</a></li></ul><h3>Global</h3><ul><li><a href="global.html#dragConstants">dragConstants</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.4</a> on Thu Aug 31 2017 19:10:02 GMT+0100 (GMT Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

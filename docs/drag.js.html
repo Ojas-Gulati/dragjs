@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: drag.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: drag.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contains useful constants for the dragCanvas objects
+ */
+var dragConstants = {
+    "canvasType": {
+        "canvas": "canvasType.canvas",
+        "layerCanvas": "canvasType.layerCanvas"
+    },
+    "defaultBackgroundColor": function (type) {
+        switch (type) {
+            case dragConstants.canvasType.canvas:
+                return "#FFFFFF"
+                break;
+            case dragConstants.canvasType.layerCanvas:
+                return "rgba(0, 0, 0, 0)"
+                break;
+        }
+    },
+    "mouseState": {
+        "mousedown": "mouseState.mousedown",
+        "mouseup": "mouseState.mouseup"
+    },
+    "modify": function (original, modifcationJSON) {
+        var origC = clone(original)
+        for (var key in modifcationJSON) {
+            if (modifcationJSON[key] === null &amp;&amp; origC[key] !== undefined) delete origC[key]
+            else if (origC[key] === undefined) origC[key] = modifcationJSON[key]
+            else if (!((typeof modifcationJSON[key] == "object") &amp;&amp; (typeof origC[key] == "object"))) origC[key] = modifcationJSON[key]
+            else origC[key] = dragConstants.modify(origC[key], modifcationJSON[key])
+        }
+        return origC
+    },
+    "clone": function (obj) {
+        if (obj === null || typeof (obj) !== 'object' || 'isActiveClone' in obj)
+            return obj;
+        if (obj instanceof Date)
+            var temp = new obj.constructor(); //or new Date(obj);
+        else
+            var temp = obj.constructor();
+        for (var key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                obj['isActiveClone'] = null;
+                temp[key] = clone(obj[key]);
+                delete obj['isActiveClone'];
+            }
+        }
+        return temp;
+    }
+}
+
+/**
+ * Creates a dragCanvas object
+ * @class
+ * @classdesc A dragCanvas object
+ * @param {any} canvas
+ * @param {any} options
+ */
+var dragCanvas = function (canvas, options) {
+    var thisCopy = this;
+    var currentDragID = null;
+    var currentObjOffset = {
+        "x": 0,
+        "y": 0
+    }
+
+    var disabledIDs = [];
+    var hiddenIDs = [];
+    var draggablesOnEvent = {
+        "drag": [],
+        "hover": [],
+        "pick": [],
+        "drop": []
+    }
+    var currentEventsFiring = {
+        "drag": [],
+        "hover": [],
+        "pick": [],
+        "drop": []
+    }
+    var draggables = {}
+    var mousestate = dragConstants.mouseState.mouseup
+    var internalCanvas = canvas;
+    if (canvas === undefined) throw Error("Canvas not specified")
+    if (options === undefined) {
+        options = {
+            "backgroundColor": dragConstants.defaultBackgroundColor(dragConstants.canvasType.canvas),
+            "canvasType": dragConstants.canvasType.canvas
+        }
+    }
+    if (options.backgroundColor === undefined) options.backgroundColor = dragConstants.defaultBackgroundColor(options.canvasType)
+    if (options.canvasType === undefined) options.canvasType = dragConstants.canvasType.canvas
+
+    if (options.canvasType == dragConstants.canvasType.layerCanvas) {
+        canvas.shownState = "initial";
+        internalCanvas = canvas.element
+    }
+
+    var boundingCanvas = internalCanvas.getBoundingClientRect();
+    internalCanvas.addEventListener("mousedown", function (event) { var d = getClickPosition(event); mousedown(d.x, d.y, event) })
+    internalCanvas.addEventListener("mouseup", function (event) { var d = getClickPosition(event); mouseup(d.x, d.y, event) })
+    internalCanvas.addEventListener("mouseleave", function (event) { var d = getClickPosition(event); mouseup(d.x, d.y, event) })
+    internalCanvas.addEventListener("mousemove", function (event) { var d = getClickPosition(event); mousemove(d.x, d.y, event) })
+
+    internalCanvas.addEventListener("touchstart", function (event) { var d = getTouchPosition(event); if (d != null) { mousedown(d.x, d.y, event) } }, false)
+    internalCanvas.addEventListener("touchend", function (event) { var d = getTouchPosition(event); if (d != null) { mouseup(d.x, d.y, event) } }, false)
+    internalCanvas.addEventListener("touchcancel", function (event) { var d = getTouchPosition(event); if (d != null) { mouseup(d.x, d.y, event) } }, false)
+    internalCanvas.addEventListener("touchmove", function (event) { var d = getTouchPosition(event); if (d != null) { mousemove(d.x, d.y, event) } }, false)
+
+    /**
+     * Adds a draggable object
+     * @function
+     * @param {any} id - The id of the object to be added
+     * @param {Object} options - The options for the object to be added
+     */
+    this.add = function (id, options) {
+        if (id === undefined) throw Error("ID must be present")
+        if (options === undefined) throw Error("Options must be present")
+        id = id.toString()
+        if (options.x === undefined) throw Error("Starting x coordinate not specified in options")
+        if (options.y === undefined) throw Error("Starting y coordinate not specified in options")
+        if (options.shape === undefined) throw Error("Shape function not specified in options")
+        if (typeof options.shape !== "function") throw Error("Shape property is not a function")
+        if (typeof options.x !== "number") throw Error("Starting x coordinate is not a number")
+        if (typeof options.y !== "number") throw Error("Starting y coordinate is not a number")
+        if (options.isClicked === undefined &amp;&amp; options.boundingBox === undefined) throw Error("Neither isClicked nor boundingBox was specified")
+        if (options.isClicked === undefined) {
+            if (options.boundingBox.width === undefined) throw Error("Width of boundingBox not specified")
+            if (options.boundingBox.height === undefined) throw Error("Height of boundingBox not specified")
+            if (typeof options.boundingBox.width !== "number") throw Error("Width of boundingBox is not a number")
+            if (typeof options.boundingBox.height !== "number") throw Error("Height of boundingBox is not a number")
+        }
+        if (draggables[id] !== undefined) throw Error("Object ID is already present")
+        draggables[id] = options;
+        if (options.eventListeners !== undefined) {
+            for (var key in options.eventListeners) {
+                if (draggablesOnEvent[key] !== undefined) {
+                    draggablesOnEvent[key].push(id)
+                }
+            }
+        }
+        thisCopy.redraw()
+    }
+    /**
+     * Removes a draggable object
+     * @function
+     * @param {any} id - The id of the object to be removed
+     */
+    this.remove = function (id) {
+        if (id === undefined) throw Error("ID must be present")
+        id = id.toString()
+        if (draggables[id] === null || draggables[id] === undefined) throw Error("The object " + id.toString() + " is not present")
+        delete draggables[id]
+        for (var key in draggablesOnEvent) {
+            if (draggablesOnEvent[key].indexOf(id) != -1) draggablesOnEvent[key].splice(draggablesOnEvent[key].indexOf(id));
+        }
+        for (var key in currentEventsFiring) {
+            if (currentEventsFiring[key].indexOf(id) != -1) currentEventsFiring[key].splice(currentEventsFiring[key].indexOf(id));
+        }
+        if (hiddenIDs.indexOf(id) != -1) hiddenIDs.splice(hiddenIDs.indexOf(id));
+        if (disabledIDs.indexOf(id) != -1) disabledIDs.splice(disabledIDs.indexOf(id));
+        if (currentDragID == id) thisCopy.drop();
+        thisCopy.redraw();
+    }
+
+    /**
+     * Shows a draggable object
+     * @function
+     * @param {any} [id] - The id of the object to be shown
+     */
+    this.show = function (id) {
+        if (id === undefined) {
+            hiddenIDs = [];
+        }
+        else {
+            if (draggables[id] === undefined) throw Error("This ID does not exist")
+            if (hiddenIDs.indexOf(id) != -1) hiddenIDs.splice(hiddenIDs.indexOf(id), 1)
+            thisCopy.redraw()
+        }
+    }
+
+    /**
+     * Hides a draggable object
+     * @function
+     * @param {any} [id] - The id of the object to be hidden
+     */
+    this.hide = function (id) {
+        if (id === undefined) {
+            hiddenIDs = [];
+            for (var key in draggables) {
+                hiddenIDs.push(key)
+            }
+        }
+        else {
+            if (draggables[id] === undefined) throw Error("This ID does not exist")
+            if (hiddenIDs.indexOf(id) == -1) hiddenIDs.push(id)
+            thisCopy.redraw()
+        }
+    }
+
+    /**
+     * Enables dragging of a draggable object
+     * @function
+     * @param {any} [id] - The id of the object to be enabled
+     */
+    this.enable = function (id) {
+        if (id === undefined) {
+            disabledIDs = [];
+        }
+        else {
+            if (draggables[id] === undefined) throw Error("This ID does not exist")
+            if (disabledIDs.indexOf(id) != -1) disabledIDs.splice(hiddenIDs.indexOf(id), 1)
+        }
+    }
+
+    /**
+     * Disables dragging of a draggable object or the whole canvas
+     * @function
+     * @param {any} [id] - The id of the object to be disabled
+     */
+    this.disable = function (id) {
+        if (id === undefined) {
+            disabledIDs = [];
+            for (var key in draggables) {
+                disabledIDs.push(key)
+            }
+        }
+        else {
+            if (draggables[id] === undefined) throw Error("This ID does not exist")
+            if (disabledIDs.indexOf(id) == -1) disabledIDs.push(id)
+        }
+    }
+
+
+    /**
+     * Clears and redraws the canvas
+     * @function
+     */
+    this.redraw = function () {
+        // Clear canvas
+        var ctx = internalCanvas.getContext("2d")
+        var fc = JSON.parse(JSON.stringify(ctx.fillStyle))
+        ctx.clearRect(0, 0, internalCanvas.width, internalCanvas.height)
+        ctx.fillStyle = options.backgroundColor;
+        ctx.fillRect(0, 0, internalCanvas.width, internalCanvas.height)
+        ctx.fillStyle = fc
+        // Scrape all objects
+        var objects = [];
+        var disableObjectKeys = [];
+        for (var key in currentEventsFiring) {
+            for (var i = 0; i &lt; currentEventsFiring[key].length; i++) {
+                if (hiddenIDs.indexOf(currentEventsFiring[key][i]) == -1) {
+                    objects.push(objectInContext(draggables[currentEventsFiring[key][i]], key))
+                    disableObjectKeys.push(currentEventsFiring[key][i])
+                }
+            }
+        }
+        for (var key in draggables) {
+            if (hiddenIDs.indexOf(key) == -1 &amp;&amp; disableObjectKeys.indexOf(key) == -1) {
+                objects.push(draggables[key])
+            }
+        }
+        // Give them priorities and sort
+        for (var i = 0; i &lt; objects.length; i++) {
+            if (objects[i].drawPriority === undefined) {
+                if (objects[i].clickPriority === undefined) {
+                    objects[i].drawPriority = 0
+                }
+                else {
+                    objects[i].drawPriority = objects[i].clickPriority
+                }
+            }
+        }
+        objects.sort(function (a, b) { return a.drawPriority - b.drawPriority })
+        // Draw
+        for (var i = 0; i &lt; objects.length; i++) {
+            objects[i].shape(objects[i].x, objects[i].y)
+            if (objects[i].call !== undefined) objects[i].call()
+        }
+    }
+
+    /**
+     * Returns an array of object names
+     * @function
+     */
+    this.objects = function () {
+        var arr = [];
+        for (var key in draggables) {
+            arr.push(key)
+        }
+        return arr
+    }
+
+    /**
+     * Updates the data of an object with a modification JSON
+     * @function
+     * @param {any} id - The id of the object to be modified
+     * @param {Object} options - The modification JSON for the object
+     */
+    this.update = function (id, options) {
+        if (draggables[id] === undefined) throw Error("This ID does not exist")
+        var obj = dragConstants.modify(draggables[id], options)
+        thisCopy.remove(id)
+        thisCopy.add(id, obj)
+    }
+
+    /**
+     * Sets the position of the object specified by the id
+     * @function
+     * @param {any} id - The id of the object to be modified
+     * @param {x} x - The new x coordinate of the object
+     * @param {y} y - The new y coordinate of the object
+     */
+    this.setPosition = function (id, x, y) {
+        if (draggables[id] === undefined) throw Error("This ID does not exist")
+        if (typeof x != "number") throw Error("x must be a number")
+        if (typeof x != "number") throw Error("y must be a number")
+        draggables[id].x = x
+        draggables[id].y = y
+
+    }
+
+    /**
+     * @typedef {Object} XYCoordinates
+     * @property {number} x
+     * @property {number} y
+     */
+
+    /**
+     * Gets the position of the object specified by the id
+     * @function
+     * @param {id} - The id of the object to be fetched
+     * @returns {XYCoordinates} - Returns the X and Y coordinates
+     */
+    this.getPosition = function (id) {
+        if (draggables[id] === undefined) throw Error("This ID does not exist")
+        return {
+            "x": draggables[id].x,
+            "y": draggables[id].y
+        }
+    }
+
+    /**
+     * Drops the current object picked up (if any) (does not call drop)
+     * @function
+     */
+    this.drop = function () {
+        currentDragID = null;
+        currentObjOffset = {
+            "x": 0,
+            "y": 0
+        }
+    }
+
+    /**
+     * Gets the data of an object
+     * @param {id} - The id of the object to be fetched
+     */
+    this.getObjectData = function (id) {
+        if (id === undefined) return draggables
+        else if (draggables[id] !== undefined) return draggables[id.toString()]
+        else throw Error("The object " + id.toString() + " is not present")
+    }
+
+    function getClickPosition(e) {
+        return {
+            "x": e.clientX - boundingCanvas.left,
+            "y": e.clientY - boundingCanvas.top
+        }
+    }
+    function getTouchPosition(e) {
+        if (e.touches.length == 1 &amp;&amp; e.targetTouches.length == 1) {
+            return {
+                "x": e.targetTouches[0].pageX - boundingCanvas.left,
+                "y": e.targetTouches[0].pageY - boundingCanvas.top
+            }
+        }
+        else { return null }
+    }
+
+    function getOffsetLeft(elem) {
+        var offsetLeft = 0;
+        do {
+            if (!isNaN(elem.offsetLeft)) {
+                offsetLeft += elem.offsetLeft;
+            }
+        } while (elem = elem.offsetParent);
+        return offsetLeft;
+    }
+    function getOffsetTop(elem) {
+        var offsetLeft = 0;
+        do {
+            if (!isNaN(elem.offsetTop)) {
+                offsetLeft += elem.offsetTop;
+            }
+        } while (elem = elem.offsetParent);
+        return offsetLeft;
+    }
+    function mousedown(x, y, e) {
+        e.preventDefault()
+        var remPick = false;
+        var addDrag = false;
+        mousestate = dragConstants.mouseState.mousedown
+        var maxClickPriority = -Infinity
+        var maxClickKey = null
+        var potentialDraggerIDS =[]
+        for (var key in draggables) {
+            if (mouseIsOver(draggables[key], x, y)
+                &amp;&amp; hiddenIDs.indexOf(key) == -1
+                &amp;&amp; disabledIDs.indexOf(key) == -1) potentialDraggerIDS.push(key)
+        }
+        for (var i = 0; i &lt; potentialDraggerIDS.length; i++) {
+            var currentPriority = null
+            if (draggables[potentialDraggerIDS[i]].clickPriority === undefined) {
+                if (draggables[potentialDraggerIDS[i]].drawPriority === undefined) currentPriority = 0
+                else currentPriority = draggables[potentialDraggerIDS[i]].drawPriority
+            }
+            else currentPriority = draggables[potentialDraggerIDS[i]].clickPriority
+            if (currentPriority > maxClickPriority) {
+                maxClickPriority = currentPriority
+                maxClickKey = potentialDraggerIDS[i]
+            }
+
+        }
+        if (maxClickKey != null) {
+            currentDragID = maxClickKey
+            if (draggables[maxClickKey].recenter !== undefined &amp;&amp; draggables[maxClickKey].recenter == true) {
+                currentObjOffset = {
+                    "x": 0,
+                    "y": 0
+                }
+                draggables[maxClickKey].x = x
+                draggables[maxClickKey].y = y
+            }
+            else {
+                currentObjOffset = {
+                    "x": draggables[maxClickKey].x - x,
+                    "y": draggables[maxClickKey].y - y
+                }
+            }
+            if (draggablesOnEvent.pick.indexOf(maxClickKey) != -1) {
+                currentEventsFiring.pick.push(maxClickKey)
+                remPick = true
+                if (draggablesOnEvent.drag.indexOf(maxClickKey) != -1) addDrag = true
+            }
+            else if (draggablesOnEvent.drag.indexOf(maxClickKey) != -1) currentEventsFiring.drag.push(maxClickKey)
+        }
+        thisCopy.redraw()
+        if (remPick) {
+            currentEventsFiring.pick.splice(currentEventsFiring.pick.indexOf(maxClickKey), 1)
+        }
+        if (addDrag) {
+            currentEventsFiring.drag.push(maxClickKey)
+        }
+    }
+    function mouseup(x, y, e) {
+        e.preventDefault()
+        var remDrop = false;
+        if (currentDragID != null) {
+            if (draggablesOnEvent.drag.indexOf(currentDragID) != -1) currentEventsFiring.drag.splice(currentEventsFiring.drag.indexOf(currentDragID), 1)
+            if (draggablesOnEvent.drop.indexOf(currentDragID) != -1) {
+                currentEventsFiring.drop.push(currentDragID)
+                remDrop = true
+            }
+        }
+        thisCopy.redraw()
+        if (remDrop &amp;&amp; currentDragID != null) {
+            currentEventsFiring.drop.splice(currentEventsFiring.drop.indexOf(currentDragID), 1)
+        }
+        mousestate = dragConstants.mouseState.mouseup
+        currentDragID = null;
+        currentObjOffset = {
+            "x": 0,
+            "y": 0
+        }
+        
+    }
+    function mousemove(x, y, e) {
+        e.preventDefault()
+        var rd = false;
+        if (currentDragID == null &amp;&amp; mousestate == dragConstants.mouseState.mouseup) {
+            currentEventsFiring.hover = [];
+            for (var i = 0; i &lt; draggablesOnEvent["hover"]; i++) {
+                if (mouseIsOver(draggables[draggablesOnEvent["hover"][i]], x, y) &amp;&amp; hiddenIDs.indexOf(draggablesOnEvent["hover"][i]) == -1) {
+                    rd = true
+                    currentEventsFiring.hover.push()
+
+                }
+            }
+        }
+        else if (currentDragID != null) {
+            rd = true
+            draggables[currentDragID].x = x + currentObjOffset.x
+            draggables[currentDragID].y = y + currentObjOffset.y
+        }
+        if (rd) thisCopy.redraw();
+    }
+    
+    function objectInContext(object, context) {
+        var cloned = clone(object)
+        var evl = clone(cloned["eventListeners"])
+        delete cloned["eventListeners"]
+        return dragConstants.modify(cloned, evl[context])
+    }
+
+    function mouseIsOver(obj, x, y) {
+        if (obj.isClicked !== undefined) return obj.isClicked(x, y, obj.x, obj.y)
+        else return boundingBoxClicked(obj, x, y)
+    }
+    function boundingBoxClicked(obj, x, y) {
+        var topLeft = {
+            "x": null,
+            "y": null
+        }
+        var fbToCenters = false;
+        if (obj.boundingBox.center === undefined) {
+            fbToCenters = true;
+        }
+        else {
+            if (obj.boundingBox.center) {
+                topLeft.x = obj.x - (obj.boundingBox.width / 2)
+                topLeft.y = obj.y - (obj.boundingBox.height / 2)
+            }
+            else {
+                fbToCenters = true;
+            }
+        }
+
+        if (fbToCenters) {
+            if (obj.boundingBox.centerH === undefined || obj.boundingBox.centerH == false) {
+                topLeft.x = obj.x
+            }
+            else {
+                topLeft.x = obj.x - (obj.boundingBox.width / 2)
+            }
+            if (obj.boundingBox.centerV === undefined || obj.boundingBox.centerV == false) {
+                topLeft.y = obj.y
+            }
+            else {
+                topLeft.y = obj.y - (obj.boundingBox.height / 2)
+            }
+        }
+        if (obj.boundingBox.offsetX !== undefined) topLeft.x = topLeft.x + obj.boundingBox.offsetX
+        if (obj.boundingBox.offsetY !== undefined) topLeft.y = topLeft.y + obj.boundingBox.offsetY
+
+        return (x >= topLeft.x &amp;&amp; x &lt;= (topLeft.x + obj.boundingBox.width) &amp;&amp; y >= topLeft.y &amp;&amp; y &lt;= (topLeft.y + obj.boundingBox.height))
+    }
+}
+
+dragCanvas.prototype.toString = function () {
+    return "[object dragCanvas]"
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="dragCanvas.html">dragCanvas</a></li></ul><h3>Global</h3><ul><li><a href="global.html#dragConstants">dragConstants</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.4</a> on Thu Aug 31 2017 19:10:02 GMT+0100 (GMT Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
