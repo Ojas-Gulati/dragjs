@@ -21,7 +21,7 @@ var dragConstants = {
         "mouseup": "mouseState.mouseup"
     },
     "modify": function (original, modifcationJSON) {
-        var origC = clone(original)
+        var origC = dragConstants.clone(original)
         for (var key in modifcationJSON) {
             if (modifcationJSON[key] === null && origC[key] !== undefined) delete origC[key]
             else if (origC[key] === undefined) origC[key] = modifcationJSON[key]
@@ -40,7 +40,7 @@ var dragConstants = {
         for (var key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 obj['isActiveClone'] = null;
-                temp[key] = clone(obj[key]);
+                temp[key] = dragConstants.clone(obj[key]);
                 delete obj['isActiveClone'];
             }
         }
@@ -92,7 +92,13 @@ var dragCanvas = function (canvas, options) {
 
     if (options.canvasType == dragConstants.canvasType.layerCanvas) {
         canvas.shownState = "initial";
-        internalCanvas = canvas.element
+        internalCanvas = canvas.element;
+        if (canvas.element.getAttribute("data-layer-visible") == "true") {
+            canvas.show();
+        }
+        else {
+            canvas.hide();
+        }
     }
 
     var boundingCanvas = internalCanvas.getBoundingClientRect();
@@ -496,8 +502,8 @@ var dragCanvas = function (canvas, options) {
     }
     
     function objectInContext(object, context) {
-        var cloned = clone(object)
-        var evl = clone(cloned["eventListeners"])
+        var cloned = dragConstants.clone(object)
+        var evl = dragConstants.clone(cloned["eventListeners"])
         delete cloned["eventListeners"]
         return dragConstants.modify(cloned, evl[context])
     }
